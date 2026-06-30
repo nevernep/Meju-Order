@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MEJU ORDER | Track Your Order</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+
+<body>
+
+    <header class="hero">
+        <div class="overlay"></div>
+
+        <div class="hero-content">
+            <h1>MEJU ORDER</h1>
+            <p>ติดตามสถานะสินค้าพรีออเดอร์ของคุณ</p>
+
+            <div class="search-box">
+
+                <input
+                    type="text"
+                    id="customerId"
+                    placeholder="กรอก Customer ID">
+
+                <button onclick="searchOrder()">
+                    ตรวจสอบสถานะ
+                </button>
+
+            </div>
+        </div>
+    </header>
+
+    <main>
+
+        <section class="intro">
+            <h2>Track Your Package</h2>
+            <p>
+                ตรวจสอบสถานะสินค้าได้ตลอด 24 ชั่วโมง
+                อัปเดตจากระบบหลังบ้านแบบเรียลไทม์
+            </p>
+        </section>
+
+        <section id="results"></section>
+
+    </main>
+
+    <footer>
+        <h3>MEJU ORDER</h3>
+        <p>Preorder & Import Service</p>
+        <p>Line OA : @mejuorder</p>
+    </footer>
+
+    <script src="app.js"></script>
+
+</body>
+</html>
