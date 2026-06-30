@@ -91,59 +91,79 @@ async function searchOrder() {
           : `<span class="badge badge-deposit">🧡 มัดจำ</span>`;
 
       html += `
-      <div class="card">
+<div class="order-card">
 
-        <div class="image-box">
-          <img
-            src="${item.imageUrl}"
-            alt="${item.productName}"
-            onerror="this.src='https://placehold.co/600x600?text=No+Image'"
-          >
-        </div>
+  <div class="product-section">
 
-        <div class="content">
+    <img
+      class="product-image"
+      src="${item.imageUrl}"
+      alt="${item.productName}"
+      onerror="this.src='https://placehold.co/400x400?text=No+Image'"
+    >
 
-          <div class="product-name">
-            ${item.productName}
-          </div>
+    <div class="payment-card">
 
-          <div class="badges">
-
-            <span class="badge badge-status">
-              📦 ${item.status}
-            </span>
-
-            ${paymentBadge}
-
-          </div>
-
-          <div class="info-card">
-
-            <div>🛍️ จำนวน : ${item.qty}</div>
-
-            <div>
-              🚚 Tracking :
-              ${item.tracking || "-"}
-            </div>
-
-            <div>
-              📝 หมายเหตุ :
-              ${item.remark || "-"}
-            </div>
-
-            <div>
-              📅 อัปเดตล่าสุด :
-              ${new Date(item.updateDate).toLocaleDateString("th-TH")}
-            </div>
-
-          </div>
-
-          ${generateTimeline(item.status)}
-
-        </div>
-
+      <div class="payment-title">
+        การชำระเงิน ♡
       </div>
-      `;
+
+      <div class="payment-status">
+        ${
+          item.payment === "ชำระเต็มจำนวน"
+            ? "ชำระเต็มแล้ว ✓"
+            : "มัดจำแล้ว ✓"
+        }
+      </div>
+
+      <div class="payment-amount">
+        ${item.amount || "-"}
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="detail-section">
+
+    <div class="top-bar">
+
+      <h2>${item.productName}</h2>
+
+      <div class="update-box">
+        📅 ${item.updateDate || "-"}
+      </div>
+
+    </div>
+
+    <div class="qty-box">
+      จำนวน : ${item.qty} ชิ้น
+    </div>
+
+    <div class="status-badge">
+      📦 ${item.status}
+    </div>
+
+    <div class="info-grid">
+
+      <div class="info-item">
+        🚚 Tracking :
+        ${item.tracking || "-"}
+      </div>
+
+      <div class="info-item">
+        💬 หมายเหตุ :
+        ${item.remark || "-"}
+      </div>
+
+    </div>
+
+    ${generateTimeline(item.status)}
+
+  </div>
+
+</div>
+`;
     });
 
     results.innerHTML = html;
