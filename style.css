@@ -274,5 +274,96 @@ footer h3{
     .search-box button{
         width:100%;
     }
+    .card{
+    background:white;
+    border-radius:28px;
+    overflow:hidden;
+    margin-bottom:24px;
+    box-shadow:0 8px 30px rgba(0,0,0,.05);
+
+    display:grid;
+    grid-template-columns:220px 1fr;
+}
+
+.card img{
+    width:220px;
+    height:220px;
+    object-fit:cover;
+}
+
+.product-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:flex-start;
+    gap:12px;
+}
+
+.product-name{
+    font-size:24px;
+    font-weight:700;
+    color:#7A1F2B;
+}
+
+.badges{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin:15px 0;
+}
+
+.badge{
+    padding:10px 16px;
+    border-radius:999px;
+    font-size:14px;
+    font-weight:600;
+}
+
+.badge-status{
+    background:#F8E4E7;
+    color:#7A1F2B;
+}
+
+.badge-paid{
+    background:#E5F8EC;
+    color:#198754;
+}
+
+.badge-deposit{
+    background:#FFF4D6;
+    color:#B8860B;
+}
+
+.info-box{
+    background:#FAFAFA;
+    border-radius:16px;
+    padding:14px;
+    margin-top:15px;
+}
+
+.timeline{
+    margin-top:20px;
+}
+
+.timeline-step{
+    padding:8px 0;
+    color:#999;
+}
+
+.timeline-step.active{
+    color:#7A1F2B;
+    font-weight:700;
+}
+
+@media(max-width:768px){
+
+.card{
+    grid-template-columns:1fr;
+}
+
+.card img{
+    width:100%;
+    height:250px;
+}
+}
 
 }

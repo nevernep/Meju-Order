@@ -1,5 +1,5 @@
 const API_URL =
-"https://script.google.com/macros/s/AKfycbxg4pX79ymPteh4NAipdI_27EX8YVimlJdAT5qd35gpLQZlbGWr6TYaaWjNMqfyMGXsPQ/exec";
+"https://script.google.com/macros/s/AKfycbwlP_cg6nY1vR533frvpC4Rns57IgOqhzj2JMb2KV33jmXWuOsuWVQdIuzQa1GUQ_w2ag/exec";
 
 function generateTimeline(status) {
 
@@ -12,22 +12,32 @@ function generateTimeline(status) {
     "จัดส่งสำเร็จ"
   ];
 
+  const icons = [
+    "🛒",
+    "📦",
+    "🏢",
+    "🚚",
+    "🇹🇭",
+    "🎉"
+  ];
+
   const currentIndex = steps.indexOf(status);
 
-  let timelineHTML = '<div class="timeline">';
+  let timelineHTML = `<div class="timeline">`;
 
   steps.forEach((step, index) => {
 
     const isCompleted = index <= currentIndex;
 
     timelineHTML += `
-      <div class="timeline-step ${isCompleted ? 'active' : ''}">
-        ${isCompleted ? '✓' : '○'} ${step}
+      <div class="timeline-step ${isCompleted ? "active" : ""}">
+        ${isCompleted ? icons[index] : "⚪"}
+        ${step}
       </div>
     `;
   });
 
-  timelineHTML += '</div>';
+  timelineHTML += `</div>`;
 
   return timelineHTML;
 }
@@ -45,7 +55,11 @@ async function searchOrder() {
     return;
   }
 
-  results.innerHTML = "กำลังค้นหา...";
+  results.innerHTML = `
+    <div class="loading">
+      กำลังค้นหาข้อมูล...
+    </div>
+  `;
 
   try {
 
@@ -55,11 +69,12 @@ async function searchOrder() {
     const data =
       await response.json();
 
-    if (data.length === 0) {
+    if (!data.length) {
 
       results.innerHTML = `
         <div class="not-found">
-          ไม่พบ Customer ID นี้
+          <h3>ไม่พบ Customer ID นี้</h3>
+          <p>กรุณาตรวจสอบอีกครั้ง</p>
         </div>
       `;
 
@@ -70,14 +85,21 @@ async function searchOrder() {
 
     data.forEach(item => {
 
+      const paymentBadge =
+        item.payment === "ชำระเต็มจำนวน"
+          ? `<span class="badge badge-paid">💚 ชำระเต็มจำนวน</span>`
+          : `<span class="badge badge-deposit">🧡 มัดจำ</span>`;
+
       html += `
       <div class="card">
 
-        <img
-          src="${item.imageUrl}"
-          alt="${item.productName}"
-          onerror="this.src='https://placehold.co/600x600?text=No+Image'"
-        >
+        <div class="image-box">
+          <img
+            src="${item.imageUrl}"
+            alt="${item.productName}"
+            onerror="this.src='https://placehold.co/600x600?text=No+Image'"
+          >
+        </div>
 
         <div class="content">
 
@@ -85,25 +107,35 @@ async function searchOrder() {
             ${item.productName}
           </div>
 
-          <div class="info">
-            จำนวน : ${item.qty}
+          <div class="badges">
+
+            <span class="badge badge-status">
+              📦 ${item.status}
+            </span>
+
+            ${paymentBadge}
+
           </div>
 
-          <div class="status">
-            ${item.status}
-          </div>
+          <div class="info-card">
 
-          <div class="info">
-            Tracking : ${item.tracking || "-"}
-          </div>
+            <div>🛍️ จำนวน : ${item.qty}</div>
 
-          <div class="info">
-            หมายเหตุ : ${item.remark || "-"}
-          </div>
+            <div>
+              🚚 Tracking :
+              ${item.tracking || "-"}
+            </div>
 
-          <div class="info">
-            อัปเดตล่าสุด :
-            ${new Date(item.updateDate).toLocaleDateString("th-TH")}
+            <div>
+              📝 หมายเหตุ :
+              ${item.remark || "-"}
+            </div>
+
+            <div>
+              📅 อัปเดตล่าสุด :
+              ${new Date(item.updateDate).toLocaleDateString("th-TH")}
+            </div>
+
           </div>
 
           ${generateTimeline(item.status)}
