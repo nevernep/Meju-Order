@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MEJU ORDER Admin</title>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="admin.css?v=700">
+</head>
+
+<body>
+  <section id="loginScreen" class="login-screen">
+    <form id="loginForm" class="login-card">
+      <div class="admin-logo">MEJU ORDER</div>
+      <div class="admin-subtitle">Admin</div>
+
+      <input
+        id="adminPassword"
+        type="password"
+        placeholder="รหัสผ่านแอดมิน"
+        autocomplete="current-password"
+        required
+      >
+
+      <button id="loginButton" type="submit">เข้าสู่ระบบ</button>
+      <div id="loginError" class="login-error"></div>
+    </form>
+  </section>
+
+  <div id="adminApp" class="admin-app" hidden>
+    <header class="admin-header">
+      <div>
+        <div class="admin-header-title">MEJU ORDER</div>
+        <div class="admin-header-subtitle">ระบบจัดการออเดอร์และรอบสินค้า</div>
+      </div>
+
+      <button id="logoutButton" class="ghost-button" type="button">
+        ออกจากระบบ
+      </button>
+    </header>
+
+    <main class="admin-container">
+      <section id="statsGrid" class="stats-grid"></section>
+
+      <nav class="admin-tabs">
+        <button class="tab-button active" data-tab="orders" type="button">
+          ออเดอร์
+        </button>
+        <button class="tab-button" data-tab="batches" type="button">
+          รอบสินค้า
+        </button>
+      </nav>
+
+      <section id="ordersPanel" class="tab-panel">
+        <div class="admin-toolbar">
+          <div class="admin-search">
+            <input
+              id="orderSearchInput"
+              type="search"
+              placeholder="ค้นหา Order ID, เบอร์, ชื่อสินค้า"
+            >
+            <button id="orderSearchButton" type="button">ค้นหา</button>
+          </div>
+
+          <button id="newOrderButton" class="primary-button" type="button">
+            + เพิ่มออเดอร์
+          </button>
+        </div>
+
+        <div class="section-heading">
+          <h2>รายการออเดอร์</h2>
+          <span id="orderCount" class="count-text"></span>
+        </div>
+
+        <div id="adminOrders" class="card-list"></div>
+      </section>
+
+      <section id="batchesPanel" class="tab-panel" hidden>
+        <div class="admin-toolbar">
+          <div class="admin-search">
+            <input
+              id="batchSearchInput"
+              type="search"
+              placeholder="ค้นหา Batch ID, ชื่อรอบ, ชื่อสินค้า"
+            >
+            <button id="batchSearchButton" type="button">ค้นหา</button>
+          </div>
+
+          <button id="newBatchButton" class="primary-button" type="button">
+            + เพิ่มรอบสินค้า
+          </button>
+        </div>
+
+        <div class="bulk-bar">
+          <select id="bulkStatus">
+            <option value="">เลือกสถานะสำหรับหลายรอบ</option>
+            <option value="ยืนยันคำสั่งซื้อ">ยืนยันคำสั่งซื้อ</option>
+            <option value="ร้านค้าส่งแล้ว">ร้านค้าส่งแล้ว</option>
+            <option value="ถึงโกดังจีน">ถึงโกดังจีน</option>
+            <option value="กำลังขนส่งมาไทย">กำลังขนส่งมาไทย</option>
+            <option value="สินค้าถึงไทย">สินค้าถึงไทย</option>
+            <option value="ออกจัดส่ง">ออกจัดส่ง</option>
+          </select>
+
+          <button id="bulkUpdateButton" class="secondary-button" type="button">
+            อัปเดตรอบที่เลือก
+          </button>
+        </div>
+
+        <div class="section-heading">
+          <h2>จัดการรอบสินค้า</h2>
+          <span id="batchCount" class="count-text"></span>
+        </div>
+
+        <div id="adminBatches" class="card-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <div id="orderModal" class="modal-backdrop" hidden>
+    <div class="modal-card modal-large">
+      <div class="modal-header">
+        <h2 id="orderModalTitle">เพิ่มออเดอร์</h2>
+        <button id="closeOrderModal" class="close-button" type="button">×</button>
+      </div>
+
+      <form id="orderForm">
+        <input id="formOrderId" type="hidden">
+
+        <div class="form-grid">
+          <label class="form-field">
+            <span>Order ID</span>
+            <input id="displayOrderId" type="text" readonly placeholder="สร้างให้อัตโนมัติ">
+          </label>
+
+          <label class="form-field">
+            <span>เบอร์โทรศัพท์</span>
+            <input id="formPhone" type="tel" required>
+          </label>
+
+          <label class="form-field">
+            <span>การชำระเงิน</span>
+            <select id="formPayment">
+              <option value="ยังไม่ชำระ">ยังไม่ชำระ</option>
+              <option value="มัดจำ">มัดจำ</option>
+              <option value="ชำระเต็มจำนวน">ชำระเต็มจำนวน</option>
+            </select>
+          </label>
+
+          <label class="form-field form-field-full">
+            <span>หมายเหตุ</span>
+            <textarea id="formRemark" rows="3"></textarea>
+          </label>
+        </div>
+
+        <div class="editor-section">
+          <div class="editor-header">
+            <div>
+              <h3>รายการสินค้า</h3>
+              <p>สถานะปกติจะใช้จาก Batch ถ้ามีกรณีพิเศษค่อยเลือก Status Override</p>
+            </div>
+
+            <button id="addItemButton" class="secondary-button" type="button">
+              + เพิ่มสินค้า
+            </button>
+          </div>
+
+          <div id="itemRows" class="item-editor-list"></div>
+        </div>
+
+        <div class="modal-actions">
+          <button id="cancelOrderModal" class="secondary-button" type="button">
+            ยกเลิก
+          </button>
+
+          <button id="saveOrderButton" class="primary-button" type="submit">
+            บันทึกออเดอร์
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="batchModal" class="modal-backdrop" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="batchModalTitle">เพิ่มรอบสินค้า</h2>
+        <button id="closeBatchModal" class="close-button" type="button">×</button>
+      </div>
+
+      <form id="batchForm">
+        <input id="formBatchId" type="hidden">
+
+        <div class="form-grid">
+          <label class="form-field">
+            <span>Batch ID</span>
+            <input id="displayBatchId" type="text" readonly placeholder="สร้างให้อัตโนมัติ">
+          </label>
+
+          <label class="form-field">
+            <span>Product ID</span>
+            <input id="formBatchProductId" type="text">
+          </label>
+
+          <label class="form-field form-field-full">
+            <span>ชื่อรอบสินค้า</span>
+            <input
+              id="formBatchName"
+              type="text"
+              placeholder="เช่น Mido banana รอบ 7/7"
+              required
+            >
+          </label>
+
+          <label class="form-field">
+            <span>สถานะ</span>
+            <select id="formBatchStatus" required>
+              <option value="ยืนยันคำสั่งซื้อ">ยืนยันคำสั่งซื้อ</option>
+              <option value="ร้านค้าส่งแล้ว">ร้านค้าส่งแล้ว</option>
+              <option value="ถึงโกดังจีน">ถึงโกดังจีน</option>
+              <option value="กำลังขนส่งมาไทย">กำลังขนส่งมาไทย</option>
+              <option value="สินค้าถึงไทย">สินค้าถึงไทย</option>
+              <option value="ออกจัดส่ง">ออกจัดส่ง</option>
+            </select>
+          </label>
+
+          <label class="form-field">
+            <span>Tracking ของรอบ</span>
+            <input id="formBatchTracking" type="text">
+          </label>
+        </div>
+
+        <div class="modal-actions">
+          <button id="cancelBatchModal" class="secondary-button" type="button">
+            ยกเลิก
+          </button>
+
+          <button id="saveBatchButton" class="primary-button" type="submit">
+            บันทึกรอบสินค้า
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="adminToast" class="admin-toast" role="status" aria-live="polite"></div>
+
+  <script src="../config.js?v=700"></script>
+  <script src="./admin.js?v=700"></script>
+</body>
+</html>

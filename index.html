@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MEJU ORDER</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+    rel="stylesheet"
+  >
+
+  <link rel="stylesheet" href="style.css?v=700">
+</head>
+
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">MEJU ORDER</div>
+      <p class="subtitle">Preorder & Import Service</p>
+
+      <div class="search-box">
+        <input
+          id="phoneNumber"
+          type="tel"
+          inputmode="numeric"
+          autocomplete="tel"
+          placeholder="กรอกเบอร์โทรศัพท์"
+        >
+        <button id="searchButton" type="button">ค้นหา</button>
+      </div>
+
+      <p class="hint">กรอกเบอร์โทรศัพท์เพื่อเช็กสถานะสินค้า</p>
+    </header>
+
+    <main>
+      <section id="results" class="results">
+        <div class="welcome-box">
+          <div class="welcome-title">เช็กสถานะคำสั่งซื้อ</div>
+          <div class="welcome-text">กรุณากรอกเบอร์โทรศัพท์ด้านบน</div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <footer class="fixed-footer">
+    <div class="footer-logo">MEJU ORDER</div>
+    <div class="footer-subtitle">Preorder | line @703ocmqz</div>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="config.js?v=700"></script>
+  <script src="app.js?v=700"></script>
+</body>
+</html>
