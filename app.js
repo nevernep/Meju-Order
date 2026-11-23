@@ -30,6 +30,9 @@ function saveCart() { localStorage.setItem(cartKey, JSON.stringify(cart)); updat
 function showToast(message) { toast.textContent = message; toast.classList.add("show"); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800); }
 function lineUrl(message) { return `https://line.me/R/oaMessage/${LINE_OA_ID}/?${encodeURIComponent(message)}`; }
 function getProduct(id) { return products.find(product => product.id === id); }
+function productUrl(id) {
+  return `${location.origin}${location.pathname}#product?id=${encodeURIComponent(id)}`;
+}
 function isPreOrder(status) { return ["พรีออเดอร์", "Pre-order", "pre-order"].includes(String(status || "").trim()); }
 function isShopProduct(product) { return ["พร้อมส่ง", "พรีออเดอร์", "Pre-order", "pre-order"].includes(String(product.status || "").trim()) && Number(product.stock ?? 1) > 0; }
 
@@ -65,8 +68,8 @@ function renderProduct(id) {
   document.getElementById("productDetail").innerHTML = `<div class="detail-layout">
     <div class="detail-image"><img src="${escapeHtml(imageUrl(product.image))}" alt="${escapeHtml(product.name)}" onerror="this.src='';this.alt='ไม่พบรูปสินค้า'"></div>
     <div class="detail-copy"><div class="product-brand">${escapeHtml(product.brand)}</div><h1>${escapeHtml(product.name)}</h1><div class="detail-price">${money(product.price)}</div><p>${escapeHtml(product.description)}</p>
-      <div class="option-title">Color</div><div class="option-buttons">${optionList(product.colors, ["ไม่ระบุ"]).map((color, index) => `<button class="${index === 0 ? "selected" : ""}" type="button">${escapeHtml(color)}</button>`).join("")}</div>
-      <div class="option-title">Size</div><div class="option-buttons">${optionList(product.sizes, ["Free size"]).map((size, index) => `<button class="${index === 0 ? "selected" : ""}" type="button">${escapeHtml(size)}</button>`).join("")}</div>
+      <div class="option-title">Color</div><div class="option-buttons" data-option="color">${optionList(product.colors, ["ไม่ระบุ"]).map((color, index) => `<button class="${index === 0 ? "selected" : ""}" type="button" data-option-value="${escapeHtml(color)}">${escapeHtml(color)}</button>`).join("")}</div>
+      <div class="option-title">Size</div><div class="option-buttons" data-option="size">${optionList(product.sizes, ["Free size"]).map((size, index) => `<button class="${index === 0 ? "selected" : ""}" type="button" data-option-value="${escapeHtml(size)}">${escapeHtml(size)}</button>`).join("")}</div>
       <button class="button button-dark detail-action" type="button" data-add="${product.id}" ${product.status === "สินค้าหมด" ? "disabled" : ""}>${product.status === "สินค้าหมด" ? "สินค้าหมดชั่วคราว" : "เพิ่มลงตะกร้า"} <span>＋</span></button>
       <div class="delivery-note">● ${escapeHtml(product.status)} · ${escapeHtml(product.delivery)}<br>มัดจำ 50% สำหรับสินค้าพรีออเดอร์</div>
     </div></div>`;
@@ -76,18 +79,33 @@ function updateCartCount() { document.getElementById("cartCount").textContent = 
 function addToCart(id) {
   const product = getProduct(id);
   if (!product || product.status === "สินค้าหมด") return showToast("สินค้านี้หมดชั่วคราว");
-  const item = cart.find(entry => entry.id === id);
-  if (item) item.qty += 1; else cart.push({ id, qty: 1 });
+  const detail = document.getElementById("productDetail");
+  const color = detail?.querySelector('[data-option="color"] .selected')?.dataset.optionValue || "";
+  const size = detail?.querySelector('[data-option="size"] .selected')?.dataset.optionValue || "";
+  const item = cart.find(entry =>
+    entry.id === id &&
+    String(entry.color || "") === color &&
+    String(entry.size || "") === size
+  );
+  if (item) item.qty += 1; else cart.push({ id, qty: 1, color, size });
   saveCart(); showToast("เพิ่มสินค้าลงตะกร้าแล้ว ✓");
 }
 function renderCart() {
-  const items = cart.map(item => ({ ...item, product: getProduct(item.id) })).filter(item => item.product);
+  const items = cart.map((item, cartIndex) => ({ ...item, cartIndex, product: getProduct(item.id) })).filter(item => item.product);
   const itemsEl = document.getElementById("cartItems");
   const summaryEl = document.getElementById("cartSummary");
   if (!items.length) { itemsEl.innerHTML = '<div class="empty-state">ตะกร้ายังว่างอยู่<br><a class="text-link" href="#shop" data-route="shop">ไปเลือกสินค้ากันเลย ↗</a></div>'; summaryEl.innerHTML = ""; return; }
-  itemsEl.innerHTML = items.map(item => `<div class="cart-item"><img src="${escapeHtml(imageUrl(item.product.image))}" alt="${escapeHtml(item.product.name)}" onerror="this.src='';this.alt='ไม่พบรูปสินค้า'"><div><h3>${escapeHtml(item.product.name)}</h3><p>${escapeHtml(item.product.brand)} · ${escapeHtml(item.product.status)}</p><div class="cart-price">${money(item.product.price * item.qty)}</div><div class="quantity-control"><button type="button" data-decrease="${item.id}">−</button><span>${item.qty}</span><button type="button" data-increase="${item.id}">＋</button></div></div><button class="remove-cart" type="button" data-remove="${item.id}">ลบ</button></div>`).join("");
+  itemsEl.innerHTML = items.map((item, index) => {
+    const optionText = [item.color, item.size].filter(Boolean).join(" · ");
+    return `<div class="cart-item"><img src="${escapeHtml(imageUrl(item.product.image))}" alt="${escapeHtml(item.product.name)}" onerror="this.src='';this.alt='ไม่พบรูปสินค้า'"><div><h3>${escapeHtml(item.product.name)}</h3><p>${escapeHtml(item.product.brand)} · ${escapeHtml(item.product.status)}${optionText ? ` · ${escapeHtml(optionText)}` : ""}</p><div class="cart-price">${money(item.product.price * item.qty)}</div><div class="quantity-control"><button type="button" data-decrease-index="${item.cartIndex}">−</button><span>${item.qty}</span><button type="button" data-increase-index="${item.cartIndex}">＋</button></div></div><button class="remove-cart" type="button" data-remove-index="${item.cartIndex}">ลบ</button></div>`;
+  }).join("");
   const total = items.reduce((sum, item) => sum + item.product.price * item.qty, 0);
-  summaryEl.innerHTML = `<h2>สรุปออเดอร์</h2><div class="summary-row"><span>สินค้า ${cart.reduce((sum, item) => sum + item.qty, 0)} ชิ้น</span><strong>${money(total)}</strong></div><div class="summary-row"><span>ค่าจัดส่ง</span><span>แจ้งภายหลัง</span></div><div class="summary-row summary-total"><span>ยอดประมาณการ</span><strong>${money(total)}</strong></div><a class="button button-dark" href="${lineUrl(`สวัสดีค่ะ สนใจสั่งซื้อสินค้าในตะกร้า ยอดประมาณการ ${money(total)}`)}" target="_blank" rel="noopener">สั่งซื้อผ่าน LINE ↗</a><p class="delivery-note">ทีมงานจะสรุปค่าส่งและยอดมัดจำ 50% ให้ทาง LINE</p>`;
+  const orderLines = items.map((item, index) => {
+    const options = [item.color, item.size].filter(Boolean).join(" / ");
+    return `${index + 1}. ${item.product.name}${options ? ` (${options})` : ""}\nจำนวน ${item.qty} ชิ้น\nราคา ${money(item.product.price * item.qty)}\nลิงก์สินค้า: ${productUrl(item.id)}`;
+  }).join("\n\n");
+  const lineMessage = `สวัสดีค่ะ สนใจสั่งซื้อสินค้า\n\n${orderLines}\n\nรวมสินค้า ${cart.reduce((sum, item) => sum + item.qty, 0)} ชิ้น\nยอดรวม ${money(total)}\nค่าจัดส่ง แจ้งภายหลัง\n\nชื่อผู้รับ: \nเบอร์โทร: \nที่อยู่จัดส่ง: `;
+  summaryEl.innerHTML = `<h2>สรุปออเดอร์</h2><div class="summary-row"><span>สินค้า ${cart.reduce((sum, item) => sum + item.qty, 0)} ชิ้น</span><strong>${money(total)}</strong></div><div class="summary-row"><span>ค่าจัดส่ง</span><span>แจ้งภายหลัง</span></div><div class="summary-row summary-total"><span>ยอดประมาณการ</span><strong>${money(total)}</strong></div><a class="button button-dark" href="${lineUrl(lineMessage)}" target="_blank" rel="noopener">สั่งซื้อผ่าน LINE ↗</a><p class="delivery-note">ทีมงานจะสรุปค่าส่งและยอดมัดจำ 50% ให้ทาง LINE</p>`;
 }
 
 function route() {
@@ -119,10 +137,19 @@ async function searchOrder() {
 }
 
 document.addEventListener("click", event => {
+  const option = event.target.closest("[data-option-value]");
+  if (option) {
+    const group = option.closest("[data-option]");
+    group.querySelectorAll("[data-option-value]").forEach(button => button.classList.toggle("selected", button === option));
+    return;
+  }
   const add = event.target.closest("[data-add]"); if (add) { event.preventDefault(); addToCart(add.dataset.add); return; }
-  const increase = event.target.closest("[data-increase]"); if (increase) { const item = cart.find(entry => entry.id === increase.dataset.increase); if (item) item.qty += 1; saveCart(); renderCart(); return; }
-  const decrease = event.target.closest("[data-decrease]"); if (decrease) { const item = cart.find(entry => entry.id === decrease.dataset.decrease); if (item) item.qty -= 1; cart = cart.filter(entry => entry.qty > 0); saveCart(); renderCart(); return; }
-  const remove = event.target.closest("[data-remove]"); if (remove) { cart = cart.filter(item => item.id !== remove.dataset.remove); saveCart(); renderCart(); return; }
+  const increase = event.target.closest("[data-increase-index]");
+  if (increase) { const item = cart[Number(increase.dataset.increaseIndex)]; if (item) item.qty += 1; saveCart(); renderCart(); return; }
+  const decrease = event.target.closest("[data-decrease-index]");
+  if (decrease) { const item = cart[Number(decrease.dataset.decreaseIndex)]; if (item) item.qty -= 1; cart = cart.filter(entry => entry.qty > 0); saveCart(); renderCart(); return; }
+  const remove = event.target.closest("[data-remove-index]");
+  if (remove) { cart.splice(Number(remove.dataset.removeIndex), 1); saveCart(); renderCart(); return; }
   const copy = event.target.closest(".copy-tracking"); if (copy) navigator.clipboard?.writeText(copy.dataset.tracking).then(() => showToast("คัดลอก Tracking แล้ว ✓"));
 });
 ["productSearch", "priceFilter", "sortProducts"].forEach(id => document.getElementById(id).addEventListener("input", renderShop));
