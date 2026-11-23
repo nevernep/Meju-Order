@@ -6,11 +6,11 @@
   <title>MEJU ORDER Admin</title>
 
   <link
-    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
     rel="stylesheet"
   >
 
-  <link rel="stylesheet" href="admin.css?v=700">
+  <link rel="stylesheet" href="admin.css?v=826">
 </head>
 
 <body>
@@ -53,6 +53,9 @@
         </button>
         <button class="tab-button" data-tab="batches" type="button">
           รอบสินค้า
+        </button>
+        <button class="tab-button" data-tab="products" type="button">
+          สินค้าพร้อมส่ง
         </button>
       </nav>
 
@@ -119,6 +122,21 @@
 
         <div id="adminBatches" class="card-list"></div>
       </section>
+
+      <section id="productsPanel" class="tab-panel" hidden>
+        <div class="admin-toolbar">
+          <div class="admin-search">
+            <input id="productSearchInput" type="search" placeholder="ค้นหาชื่อสินค้า แบรนด์ หรือ Product ID">
+            <button id="productSearchButton" type="button">ค้นหา</button>
+          </div>
+          <button id="newProductButton" class="primary-button" type="button">+ เพิ่มสินค้า</button>
+        </div>
+        <div class="section-heading">
+          <h2>จัดการสินค้า</h2>
+          <span id="productCount" class="count-text"></span>
+        </div>
+        <div id="adminProducts" class="card-list"></div>
+      </section>
     </main>
   </div>
 
@@ -148,8 +166,14 @@
             <select id="formPayment">
               <option value="ยังไม่ชำระ">ยังไม่ชำระ</option>
               <option value="มัดจำ">มัดจำ</option>
+              <option value="ผ่อนชำระ">ผ่อนชำระ</option>
               <option value="ชำระเต็มจำนวน">ชำระเต็มจำนวน</option>
             </select>
+          </label>
+
+          <label id="installmentPeriodField" class="form-field" hidden>
+            <span>ระยะเวลาผ่อน (วัน)</span>
+            <input id="formInstallmentPeriod" type="number" min="1" max="3650" step="1" placeholder="เช่น 30">
           </label>
 
           <label class="form-field form-field-full">
@@ -182,6 +206,30 @@
             บันทึกออเดอร์
           </button>
         </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="productModal" class="modal-backdrop" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="productModalTitle">เพิ่มสินค้า</h2>
+        <button id="closeProductModal" class="close-button" type="button">×</button>
+      </div>
+      <form id="productForm">
+        <input id="formProductId" type="hidden">
+        <div class="form-grid">
+          <label class="form-field"><span>ชื่อสินค้า</span><input id="formProductName" type="text" required></label>
+          <label class="form-field"><span>แบรนด์</span><input id="formProductBrand" type="text"></label>
+          <label class="form-field"><span>ราคา</span><input id="formProductPrice" type="number" min="0" required></label>
+          <label class="form-field"><span>สถานะสินค้า</span><select id="formProductStatus"><option>พร้อมส่ง</option><option>Pre-order</option><option>พรีออเดอร์</option><option>สินค้าหมด</option></select></label>
+          <label class="form-field"><span>สต๊อก</span><input id="formProductStock" type="number" min="0" required></label>
+          <label class="form-field"><span>Color</span><input id="formProductColors" type="text" placeholder="เช่น Cream, Brown, Pink"></label>
+          <label class="form-field"><span>Size</span><input id="formProductSizes" type="text" placeholder="เช่น Free size, S, M"></label>
+          <label class="form-field form-field-full"><span>ลิงก์รูปภาพ</span><input id="formProductImage" type="url" placeholder="https://..."></label>
+          <label class="form-field form-field-full"><span>รายละเอียดสินค้า</span><textarea id="formProductDescription" rows="4"></textarea></label>
+        </div>
+        <div class="modal-actions"><button id="cancelProductModal" class="secondary-button" type="button">ยกเลิก</button><button class="primary-button" type="submit">บันทึกสินค้า</button></div>
       </form>
     </div>
   </div>
@@ -250,7 +298,7 @@
 
   <div id="adminToast" class="admin-toast" role="status" aria-live="polite"></div>
 
-  <script src="../config.js?v=700"></script>
-  <script src="./admin.js?v=700"></script>
+  <script src="../config.js?v=805"></script>
+  <script src="./admin.js?v=826"></script>
 </body>
 </html>

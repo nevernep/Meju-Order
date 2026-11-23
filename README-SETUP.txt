@@ -13,6 +13,7 @@ MEJU ORDER - BATCH STATUS SYSTEM
 - Orders
 - OrderItems
 - Batches
+- Products (สินค้าหน้าร้านพร้อมส่ง)
 
 ถ้า Google Sheet เดิมมีชีตชื่อ Orders ที่เป็นโครงสร้างเก่า
 ให้เปลี่ยนชื่อชีตเดิมเป็น Orders_Old ก่อน
@@ -43,10 +44,20 @@ Orders
 OrderID | Phone | Payment | Remark | UpdateDate
 
 OrderItems
-OrderItemID | OrderID | ProductID | ProductName | Qty | BatchID | StatusOverride | TrackingOverride | UpdateDate
+OrderItemID | OrderID | Phone | ProductID | ProductName | Qty | BatchID | StatusOverride | TrackingOverride | UpdateDate
 
 Batches
 BatchID | ProductID | BatchName | Status | Tracking | UpdateDate
+
+Products
+ProductID | ProductName | Brand | Category (legacy) | Price | Status | Stock | ImageURL | Description | UpdateDate | Colors | Sizes
+
+หมายเหตุ:
+- หน้าร้านจะแสดงเฉพาะ Products ที่ Status = พร้อมส่ง และ Stock มากกว่า 0
+- สินค้าที่เป็น พรีออเดอร์ หรือ สินค้าหมด จะไม่แสดงใน Shop
+- เพิ่ม แก้ไข ลบสินค้าได้จาก Admin > สินค้าพร้อมส่ง
+- ImageURL ต้องเป็นลิงก์รูปภาพที่เปิดดูได้จากเว็บ
+- Colors และ Sizes ให้กรอกหลายค่าโดยคั่นด้วยเครื่องหมายจุลภาค เช่น `Cream, Brown, Pink` และ `Free size, S, M`
 
 ==================================================
 3) Deploy Apps Script
@@ -81,18 +92,20 @@ window.MEJU_CONFIG = Object.freeze({
 
 1. เปิด /admin/
 2. Login
-3. เพิ่ม Batch เช่น:
+3. ไปที่แท็บ "สินค้าพร้อมส่ง" แล้วเพิ่มสินค้า
+4. ตรวจสอบหรือแก้ไขชื่อ ราคา สต๊อก สี ไซซ์ และลิงก์รูปได้จากแท็บนี้
+5. เพิ่ม Batch เช่น:
    Mido banana รอบ 7/7
-4. เพิ่มออเดอร์
-5. เพิ่มสินค้า
-6. เลือก Batch ให้สินค้า
-7. บันทึก
-8. เปิดหน้าลูกค้า
-9. ค้นหาด้วยเบอร์โทร
-10. กลับ Admin > รอบสินค้า
-11. เปลี่ยนสถานะ Batch
-12. กด "อัปเดตทั้งรอบ"
-13. กลับหน้าลูกค้าและค้นหาใหม่
+6. เพิ่มออเดอร์
+7. เพิ่มรายการสินค้า
+8. เลือก Batch ให้สินค้า
+9. บันทึก
+10. เปิดหน้าลูกค้าเพื่อดูสินค้าพร้อมส่ง
+11. ค้นหาด้วยเบอร์โทร
+12. กลับ Admin > รอบสินค้า
+13. เปลี่ยนสถานะ Batch
+14. กด "อัปเดตทั้งรอบ"
+15. กลับหน้าลูกค้าและค้นหาใหม่
 
 สถานะของลูกค้าทุกคนที่ผูก Batch เดียวกันจะเปลี่ยนพร้อมกัน
 

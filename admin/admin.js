@@ -32,6 +32,11 @@ const batchSearchButton = document.getElementById("batchSearchButton");
 
 const newOrderButton = document.getElementById("newOrderButton");
 const newBatchButton = document.getElementById("newBatchButton");
+const productSearchInput = document.getElementById("productSearchInput");
+const productSearchButton = document.getElementById("productSearchButton");
+const newProductButton = document.getElementById("newProductButton");
+const adminProducts = document.getElementById("adminProducts");
+const productCount = document.getElementById("productCount");
 const bulkStatus = document.getElementById("bulkStatus");
 const bulkUpdateButton = document.getElementById("bulkUpdateButton");
 
@@ -44,6 +49,8 @@ const formOrderId = document.getElementById("formOrderId");
 const displayOrderId = document.getElementById("displayOrderId");
 const formPhone = document.getElementById("formPhone");
 const formPayment = document.getElementById("formPayment");
+const installmentPeriodField = document.getElementById("installmentPeriodField");
+const formInstallmentPeriod = document.getElementById("formInstallmentPeriod");
 const formRemark = document.getElementById("formRemark");
 const itemRows = document.getElementById("itemRows");
 const addItemButton = document.getElementById("addItemButton");
@@ -61,12 +68,28 @@ const formBatchName = document.getElementById("formBatchName");
 const formBatchStatus = document.getElementById("formBatchStatus");
 const formBatchTracking = document.getElementById("formBatchTracking");
 const saveBatchButton = document.getElementById("saveBatchButton");
+const productModal = document.getElementById("productModal");
+const productModalTitle = document.getElementById("productModalTitle");
+const closeProductModal = document.getElementById("closeProductModal");
+const cancelProductModal = document.getElementById("cancelProductModal");
+const productForm = document.getElementById("productForm");
+const formProductId = document.getElementById("formProductId");
+const formProductName = document.getElementById("formProductName");
+const formProductBrand = document.getElementById("formProductBrand");
+const formProductPrice = document.getElementById("formProductPrice");
+const formProductStatus = document.getElementById("formProductStatus");
+const formProductStock = document.getElementById("formProductStock");
+const formProductColors = document.getElementById("formProductColors");
+const formProductSizes = document.getElementById("formProductSizes");
+const formProductImage = document.getElementById("formProductImage");
+const formProductDescription = document.getElementById("formProductDescription");
 
 const adminToast = document.getElementById("adminToast");
 
 let adminToken = localStorage.getItem(TOKEN_KEY) || "";
 let orders = [];
 let batches = [];
+let products = [];
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -75,6 +98,16 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function imageUrl(value) {
+  const url = String(value || "").trim();
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  const idMatch = url.match(/[?&]id=([^&]+)/);
+  const driveId = driveMatch ? driveMatch[1] : idMatch ? idMatch[1] : "";
+  return driveId
+    ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveId)}&sz=w800`
+    : url;
 }
 
 function statusOptions(selected = "", includeEmpty = false) {
@@ -210,10 +243,48 @@ async function loadDashboard() {
 
   orders = Array.isArray(data.orders) ? data.orders : [];
   batches = Array.isArray(data.batches) ? data.batches : [];
+  products = Array.isArray(data.products) ? data.products : [];
 
   renderStats(data.stats || {});
   renderOrders();
   renderBatches();
+  renderProducts();
+}
+
+function filteredProducts() {
+  const query = productSearchInput.value.trim().toLowerCase();
+  if (!query) return products;
+  return products.filter(product =>
+    [product.id, product.name, product.brand, product.status]
+      .join(" ").toLowerCase().includes(query)
+  );
+}
+
+function renderProducts() {
+  const list = filteredProducts();
+  productCount.textContent = `${list.length} สินค้า`;
+  if (!list.length) {
+    adminProducts.innerHTML = '<div class="admin-card">ยังไม่มีสินค้า กรุณากดเพิ่มสินค้า</div>';
+    return;
+  }
+  adminProducts.innerHTML = list.map(product => `
+    <article class="admin-card">
+      <div class="admin-card-top">
+        <div class="product-admin-info">
+          ${product.image ? `<img src="${escapeHtml(imageUrl(product.image))}" alt="" onerror="this.style.display='none'">` : ""}
+          <div>
+            <div class="card-title">${escapeHtml(product.name)}</div>
+            <div class="card-meta">${escapeHtml(product.id)} · ${escapeHtml(product.brand || "-")}</div>
+            <div class="card-status">${escapeHtml(product.status)} · ${Number(product.stock) || 0} ชิ้น · ฿${Number(product.price || 0).toLocaleString("th-TH")}</div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button type="button" class="small-button edit-button edit-product" data-product-id="${escapeHtml(product.id)}">แก้ไข</button>
+          <button type="button" class="small-button delete-button delete-product" data-product-id="${escapeHtml(product.id)}">ลบ</button>
+        </div>
+      </div>
+    </article>
+  `).join("");
 }
 
 function renderStats(stats) {
@@ -405,8 +476,18 @@ function clearOrderForm() {
   formOrderId.value = "";
   displayOrderId.value = "สร้างให้อัตโนมัติ";
   formPayment.value = "ยังไม่ชำระ";
+  updateInstallmentField();
   itemRows.innerHTML = "";
   addItemRow();
+}
+
+function updateInstallmentField() {
+  const isInstallment = formPayment.value === "ผ่อนชำระ";
+  installmentPeriodField.hidden = !isInstallment;
+  formInstallmentPeriod.required = isInstallment;
+  if (!isInstallment) {
+    formInstallmentPeriod.value = "";
+  }
 }
 
 function addItemRow(item = {}) {
@@ -475,7 +556,11 @@ function openEditOrder(orderId) {
   formOrderId.value = order.orderId;
   displayOrderId.value = order.orderId;
   formPhone.value = order.phone || "";
-  formPayment.value = order.payment || "ยังไม่ชำระ";
+  const payment = order.payment || "ยังไม่ชำระ";
+  const installmentMatch = payment.match(/^ผ่อนชำระ(?:\s*\((\d+)\s*(?:วัน|เดือน)\))?$/);
+  formPayment.value = installmentMatch ? "ผ่อนชำระ" : payment;
+  formInstallmentPeriod.value = installmentMatch && installmentMatch[1] ? installmentMatch[1] : "";
+  updateInstallmentField();
   formRemark.value = order.remark || "";
 
   itemRows.innerHTML = "";
@@ -517,13 +602,17 @@ async function saveOrder() {
   saveOrderButton.textContent = "กำลังบันทึก...";
 
   try {
+    const payment = formPayment.value === "ผ่อนชำระ"
+      ? `ผ่อนชำระ (${formInstallmentPeriod.value} วัน)`
+      : formPayment.value;
+
     const data = await postApi({
       action: "saveOrder",
       token: adminToken,
       order: {
         orderId: formOrderId.value,
         phone: formPhone.value,
-        payment: formPayment.value,
+        payment,
         remark: formRemark.value,
         items
       }
@@ -731,6 +820,83 @@ function switchTab(tabName) {
 
   document.getElementById("ordersPanel").hidden = tabName !== "orders";
   document.getElementById("batchesPanel").hidden = tabName !== "batches";
+  document.getElementById("productsPanel").hidden = tabName !== "products";
+}
+
+function clearProductForm() {
+  productForm.reset();
+  formProductId.value = "";
+  formProductStatus.value = "พร้อมส่ง";
+  formProductStock.value = "1";
+}
+
+function openNewProduct() {
+  productModalTitle.textContent = "เพิ่มสินค้า";
+  clearProductForm();
+  productModal.hidden = false;
+}
+
+function openEditProduct(productId) {
+  const product = products.find(item => item.id === productId);
+  if (!product) return;
+  productModalTitle.textContent = "แก้ไขสินค้า";
+  formProductId.value = product.id;
+  formProductName.value = product.name || "";
+  formProductBrand.value = product.brand || "";
+  formProductPrice.value = product.price || 0;
+  formProductStatus.value = product.status || "พร้อมส่ง";
+  formProductStock.value = product.stock || 0;
+  formProductColors.value = product.colors || "";
+  formProductSizes.value = product.sizes || "";
+  formProductImage.value = product.image || "";
+  formProductDescription.value = product.description || "";
+  productModal.hidden = false;
+}
+
+function closeProduct() {
+  productModal.hidden = true;
+}
+
+async function saveProduct() {
+  const button = productForm.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    const data = await postApi({
+      action: "saveProduct",
+      token: adminToken,
+      product: {
+        id: formProductId.value,
+        name: formProductName.value,
+        brand: formProductBrand.value,
+        price: formProductPrice.value,
+        status: formProductStatus.value,
+        stock: formProductStock.value,
+        colors: formProductColors.value,
+        sizes: formProductSizes.value,
+        image: formProductImage.value,
+        description: formProductDescription.value
+      }
+    });
+    closeProduct();
+    showToast(`บันทึกสินค้า ${data.productId} แล้ว`);
+    await loadDashboard();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function deleteProduct(productId) {
+  const product = products.find(item => item.id === productId);
+  if (!product || !confirm(`ต้องการลบสินค้า ${product.name} ใช่หรือไม่?`)) return;
+  try {
+    await postApi({ action: "deleteProduct", token: adminToken, productId });
+    showToast("ลบสินค้าแล้ว");
+    await loadDashboard();
+  } catch (error) {
+    alert(error.message);
+  }
 }
 
 loginForm.addEventListener("submit", event => {
@@ -809,6 +975,25 @@ batchForm.addEventListener("submit", event => {
   saveBatch();
 });
 
+newProductButton.addEventListener("click", openNewProduct);
+closeProductModal.addEventListener("click", closeProduct);
+cancelProductModal.addEventListener("click", closeProduct);
+productForm.addEventListener("submit", event => {
+  event.preventDefault();
+  saveProduct();
+});
+formPayment.addEventListener("change", updateInstallmentField);
+productSearchButton.addEventListener("click", renderProducts);
+productSearchInput.addEventListener("keydown", event => {
+  if (event.key === "Enter") renderProducts();
+});
+adminProducts.addEventListener("click", event => {
+  const editButton = event.target.closest(".edit-product");
+  if (editButton) return openEditProduct(editButton.dataset.productId);
+  const deleteButton = event.target.closest(".delete-product");
+  if (deleteButton) deleteProduct(deleteButton.dataset.productId);
+});
+
 adminBatches.addEventListener("click", event => {
   const updateButton = event.target.closest(".update-batch");
 
@@ -843,6 +1028,10 @@ batchModal.addEventListener("click", event => {
   if (event.target === batchModal) {
     closeBatch();
   }
+});
+
+productModal.addEventListener("click", event => {
+  if (event.target === productModal) closeProduct();
 });
 
 (async function init() {

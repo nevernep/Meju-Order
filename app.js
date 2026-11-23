@@ -1,464 +1,156 @@
 const CONFIG = window.MEJU_CONFIG || {};
 const API_URL = CONFIG.API_URL || "";
 const LINE_OA_ID = CONFIG.LINE_OA_ID || "@703ocmqz";
-
-const phoneInput = document.getElementById("phoneNumber");
-const searchButton = document.getElementById("searchButton");
-const results = document.getElementById("results");
 const toast = document.getElementById("toast");
+const cartKey = "meju_whisper_cart";
 
-const STATUS_STEPS = [
-  "ยืนยันคำสั่งซื้อ",
-  "ร้านค้าส่งแล้ว",
-  "ถึงโกดังจีน",
-  "กำลังขนส่งมาไทย",
-  "สินค้าถึงไทย",
-  "ออกจัดส่ง"
-];
+let products = [];
+let activeStatus = "all";
 
-const STATUS_ICONS = {
-  "ยืนยันคำสั่งซื้อ": "🛒",
-  "ร้านค้าส่งแล้ว": "📦",
-  "ถึงโกดังจีน": "🏢",
-  "กำลังขนส่งมาไทย": "✈️",
-  "สินค้าถึงไทย": "🇹🇭",
-  "ออกจัดส่ง": "🚚"
-};
-
-const STATUS_CLASSES = {
-  "ยืนยันคำสั่งซื้อ": "status-confirmed",
-  "ร้านค้าส่งแล้ว": "status-shipped",
-  "ถึงโกดังจีน": "status-warehouse",
-  "กำลังขนส่งมาไทย": "status-transit",
-  "สินค้าถึงไทย": "status-thailand",
-  "ออกจัดส่ง": "status-dispatch"
-};
+let cart = loadCart();
 
 function escapeHtml(value) {
-  return String(value ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+  return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
 }
-
-function normalizePhone(value) {
-  let phone = String(value || "").replace(/\D/g, "");
-
-  if (phone.length === 11 && phone.startsWith("66")) {
-    phone = "0" + phone.slice(2);
-  }
-
-  if (phone.length === 9) {
-    phone = "0" + phone;
-  }
-
-  return phone;
+function money(value) { return `฿${Number(value).toLocaleString("th-TH")}`; }
+function imageUrl(value) {
+  const url = String(value || "").trim();
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+  const driveId = driveMatch ? driveMatch[1] : url.match(/[?&]id=([^&]+)/)?.[1];
+  return driveId
+    ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(driveId)}&sz=w1600`
+    : url;
 }
-
-function normalizeStatus(value) {
-  const status = String(value || "").trim();
-
-  if (status === "ถึงไทยแล้ว") {
-    return "สินค้าถึงไทย";
-  }
-
-  if (status === "จัดส่งสำเร็จ") {
-    return "ออกจัดส่ง";
-  }
-
-  return status;
+function optionList(value, fallback) {
+  const values = String(value || "").split(",").map(item => item.trim()).filter(Boolean);
+  return values.length ? values : fallback;
 }
+function loadCart() { try { return JSON.parse(localStorage.getItem(cartKey)) || []; } catch { return []; } }
+function saveCart() { localStorage.setItem(cartKey, JSON.stringify(cart)); updateCartCount(); }
+function showToast(message) { toast.textContent = message; toast.classList.add("show"); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove("show"), 1800); }
+function lineUrl(message) { return `https://line.me/R/oaMessage/${LINE_OA_ID}/?${encodeURIComponent(message)}`; }
+function getProduct(id) { return products.find(product => product.id === id); }
+function isPreOrder(status) { return ["พรีออเดอร์", "Pre-order", "pre-order"].includes(String(status || "").trim()); }
+function isShopProduct(product) { return ["พร้อมส่ง", "พรีออเดอร์", "Pre-order", "pre-order"].includes(String(product.status || "").trim()) && Number(product.stock ?? 1) > 0; }
 
-function statusClass(status) {
-  const cleanStatus = normalizeStatus(status);
-  return STATUS_CLASSES[cleanStatus] || "status-special";
-}
-
-function statusIcon(status) {
-  const cleanStatus = normalizeStatus(status);
-  return STATUS_ICONS[cleanStatus] || "•";
-}
-
-function hasTracking(value) {
-  const tracking = String(value || "").trim();
-
-  return Boolean(
-    tracking &&
-    tracking !== "-" &&
-    tracking !== "ไม่มี" &&
-    tracking !== "ยังไม่มี"
-  );
-}
-
-function getPaymentText(value) {
-  const payment = String(value || "").trim();
-
-  if (payment === "ชำระเต็มจำนวน") {
-    return "ชำระเต็มแล้ว ✓";
-  }
-
-  if (payment === "มัดจำ") {
-    return "มัดจำแล้ว ✓";
-  }
-
-  return payment || "-";
-}
-
-function getOrderSummaryStatus(items) {
-  if (!items.length) {
-    return "-";
-  }
-
-  const statuses = items.map(item => normalizeStatus(item.effectiveStatus));
-  const uniqueStatuses = [...new Set(statuses)];
-
-  if (uniqueStatuses.length === 1) {
-    const onlyStatus = uniqueStatuses[0];
-
-    if (onlyStatus === "สินค้าถึงไทย") {
-      return "สินค้าถึงไทยครบแล้ว";
-    }
-
-    if (onlyStatus === "ออกจัดส่ง") {
-      return "ออกจัดส่งแล้ว";
-    }
-
-    return onlyStatus || "-";
-  }
-
-  const ranks = statuses.map(status => STATUS_STEPS.indexOf(status));
-  const validRanks = ranks.filter(rank => rank >= 0);
-
-  if (validRanks.length !== statuses.length) {
-    return "มีสินค้าบางรายการต้องตรวจสอบ";
-  }
-
-  const reachedThailand = validRanks.some(rank => rank >= STATUS_STEPS.indexOf("สินค้าถึงไทย"));
-
-  if (reachedThailand) {
-    return "สินค้าทยอยถึงไทย";
-  }
-
-  return "กำลังทยอยเดินทาง";
-}
-
-function getVisibleItemLimit() {
-  return window.innerWidth <= 480 ? 2 : 4;
-}
-
-function createTrackingHtml(tracking) {
-  if (!hasTracking(tracking)) {
-    return "";
-  }
-
-  const safeTracking = escapeHtml(tracking);
-
-  return `
-    <span class="item-tracking">
-      Tracking: ${safeTracking}
-      <button
-        type="button"
-        class="copy-tracking"
-        data-tracking="${safeTracking}"
-      >
-        คัดลอก
-      </button>
-    </span>
-  `;
-}
-
-function createItemsList(items) {
-  const rows = items.map(item => {
-    const status = normalizeStatus(item.effectiveStatus);
-
-    return `
-      <div class="item-row">
-        <div class="item-main-row">
-          <div class="item-name">${escapeHtml(item.productName || "ไม่ระบุชื่อสินค้า")}</div>
-          <div class="item-qty">× ${Number(item.qty) || 1}</div>
-        </div>
-
-        <div class="item-sub-row">
-          <span class="item-status ${statusClass(status)}">
-            <span>${statusIcon(status)}</span>
-            <span>${escapeHtml(status || "-")}</span>
-          </span>
-
-          ${createTrackingHtml(item.effectiveTracking)}
-        </div>
-      </div>
-    `;
-  }).join("");
-
-  const toggle = items.length > 2
-    ? `
-      <button
-        type="button"
-        class="items-toggle"
-        data-total="${items.length}"
-      >
-        <span class="items-toggle-text"></span>
-        <span class="items-toggle-arrow">↓</span>
-      </button>
-    `
-    : "";
-
-  return `
-    <div class="items-section">
-      <div class="items-title">รายการสินค้า</div>
-      <div class="items-list">
-        ${rows}
-      </div>
-      ${toggle}
+function productCard(product) {
+  return `<article class="product-card">
+    <a class="product-image" href="#product?id=${encodeURIComponent(product.id)}" data-route="product">
+      <span class="product-tag">${escapeHtml(product.status)}</span><img src="${escapeHtml(imageUrl(product.image))}" alt="${escapeHtml(product.name)}" loading="lazy" onerror="this.src='';this.alt='ไม่พบรูปสินค้า'">
+    </a>
+    <div class="product-info"><h3>${escapeHtml(product.name)}</h3><div class="product-brand">${escapeHtml(product.brand)}</div>
+      <div class="product-bottom"><span class="product-price">${money(product.price)}</span><button class="add-button" type="button" data-add="${product.id}" aria-label="เพิ่ม ${escapeHtml(product.name)}">+</button></div>
     </div>
-  `;
+  </article>`;
 }
 
-function getLineUrl(orderId) {
-  const message = `สวัสดีค่ะ ต้องการสอบถามเกี่ยวกับออเดอร์ #${orderId || "ไม่ระบุ"}`;
-
-  return (
-    `https://line.me/R/oaMessage/${LINE_OA_ID}/?` +
-    encodeURIComponent(message)
-  );
+function renderFeatured() {
+  document.getElementById("featuredProducts").innerHTML = products.filter(isShopProduct).slice(0, 4).map(productCard).join("");
+}
+function renderShop() {
+  const query = document.getElementById("productSearch").value.trim().toLowerCase();
+  const price = document.getElementById("priceFilter").value;
+  const sort = document.getElementById("sortProducts").value;
+  let list = products.filter(isShopProduct).filter(product => activeStatus === "all" || (activeStatus === "preorder" ? isPreOrder(product.status) : product.status === "พร้อมส่ง")).filter(product => !query || `${product.name} ${product.brand}`.toLowerCase().includes(query));
+  if (price === "under1000") list = list.filter(product => product.price < 1000);
+  if (price === "1000to2000") list = list.filter(product => product.price >= 1000 && product.price <= 2000);
+  if (price === "over2000") list = list.filter(product => product.price > 2000);
+  if (sort === "low") list.sort((a, b) => a.price - b.price);
+  if (sort === "high") list.sort((a, b) => b.price - a.price);
+  document.getElementById("shopProducts").innerHTML = list.length ? list.map(productCard).join("") : '<div class="empty-state">ไม่พบสินค้าที่ตรงกับการค้นหา</div>';
 }
 
-function createOrderCard(order, index) {
+function renderProduct(id) {
+  const product = getProduct(id) || products[0];
+  document.getElementById("productDetail").innerHTML = `<div class="detail-layout">
+    <div class="detail-image"><img src="${escapeHtml(imageUrl(product.image))}" alt="${escapeHtml(product.name)}" onerror="this.src='';this.alt='ไม่พบรูปสินค้า'"></div>
+    <div class="detail-copy"><div class="product-brand">${escapeHtml(product.brand)}</div><h1>${escapeHtml(product.name)}</h1><div class="detail-price">${money(product.price)}</div><p>${escapeHtml(product.description)}</p>
+      <div class="option-title">Color</div><div class="option-buttons">${optionList(product.colors, ["ไม่ระบุ"]).map((color, index) => `<button class="${index === 0 ? "selected" : ""}" type="button">${escapeHtml(color)}</button>`).join("")}</div>
+      <div class="option-title">Size</div><div class="option-buttons">${optionList(product.sizes, ["Free size"]).map((size, index) => `<button class="${index === 0 ? "selected" : ""}" type="button">${escapeHtml(size)}</button>`).join("")}</div>
+      <button class="button button-dark detail-action" type="button" data-add="${product.id}" ${product.status === "สินค้าหมด" ? "disabled" : ""}>${product.status === "สินค้าหมด" ? "สินค้าหมดชั่วคราว" : "เพิ่มลงตะกร้า"} <span>＋</span></button>
+      <div class="delivery-note">● ${escapeHtml(product.status)} · ${escapeHtml(product.delivery)}<br>มัดจำ 50% สำหรับสินค้าพรีออเดอร์</div>
+    </div></div>`;
+}
+
+function updateCartCount() { document.getElementById("cartCount").textContent = cart.reduce((total, item) => total + item.qty, 0); }
+function addToCart(id) {
+  const product = getProduct(id);
+  if (!product || product.status === "สินค้าหมด") return showToast("สินค้านี้หมดชั่วคราว");
+  const item = cart.find(entry => entry.id === id);
+  if (item) item.qty += 1; else cart.push({ id, qty: 1 });
+  saveCart(); showToast("เพิ่มสินค้าลงตะกร้าแล้ว ✓");
+}
+function renderCart() {
+  const items = cart.map(item => ({ ...item, product: getProduct(item.id) })).filter(item => item.product);
+  const itemsEl = document.getElementById("cartItems");
+  const summaryEl = document.getElementById("cartSummary");
+  if (!items.length) { itemsEl.innerHTML = '<div class="empty-state">ตะกร้ายังว่างอยู่<br><a class="text-link" href="#shop" data-route="shop">ไปเลือกสินค้ากันเลย ↗</a></div>'; summaryEl.innerHTML = ""; return; }
+  itemsEl.innerHTML = items.map(item => `<div class="cart-item"><img src="${escapeHtml(imageUrl(item.product.image))}" alt="${escapeHtml(item.product.name)}" onerror="this.src='';this.alt='ไม่พบรูปสินค้า'"><div><h3>${escapeHtml(item.product.name)}</h3><p>${escapeHtml(item.product.brand)} · ${escapeHtml(item.product.status)}</p><div class="cart-price">${money(item.product.price * item.qty)}</div><div class="quantity-control"><button type="button" data-decrease="${item.id}">−</button><span>${item.qty}</span><button type="button" data-increase="${item.id}">＋</button></div></div><button class="remove-cart" type="button" data-remove="${item.id}">ลบ</button></div>`).join("");
+  const total = items.reduce((sum, item) => sum + item.product.price * item.qty, 0);
+  summaryEl.innerHTML = `<h2>สรุปออเดอร์</h2><div class="summary-row"><span>สินค้า ${cart.reduce((sum, item) => sum + item.qty, 0)} ชิ้น</span><strong>${money(total)}</strong></div><div class="summary-row"><span>ค่าจัดส่ง</span><span>แจ้งภายหลัง</span></div><div class="summary-row summary-total"><span>ยอดประมาณการ</span><strong>${money(total)}</strong></div><a class="button button-dark" href="${lineUrl(`สวัสดีค่ะ สนใจสั่งซื้อสินค้าในตะกร้า ยอดประมาณการ ${money(total)}`)}" target="_blank" rel="noopener">สั่งซื้อผ่าน LINE ↗</a><p class="delivery-note">ทีมงานจะสรุปค่าส่งและยอดมัดจำ 50% ให้ทาง LINE</p>`;
+}
+
+function route() {
+  const raw = location.hash.slice(1) || "home";
+  const [routeName, queryString] = raw.split("?");
+  const params = new URLSearchParams(queryString || "");
+  const page = ["home", "shop", "product", "cart", "orders", "faq"].includes(routeName) ? routeName : "home";
+  document.querySelectorAll(".page-section").forEach(section => section.classList.toggle("active-page", section.dataset.page === page));
+  document.querySelectorAll(".main-nav a").forEach(link => link.classList.toggle("active", link.dataset.route === page));
+  document.querySelector(".main-nav").classList.remove("open");
+  if (page === "product") renderProduct(params.get("id"));
+  if (page === "cart") renderCart();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function normalizePhone(value) { let phone = String(value || "").replace(/\D/g, ""); if (phone.length === 11 && phone.startsWith("66")) phone = "0" + phone.slice(2); if (phone.length === 9) phone = "0" + phone; return phone; }
+function hasTracking(value) { return value && !["-", "ไม่มี", "ยังไม่มี"].includes(String(value).trim()); }
+function statusClass(status) { return { "ยืนยันคำสั่งซื้อ": "status-confirmed", "ร้านค้าส่งแล้ว": "status-shipped", "ถึงโกดังจีน": "status-warehouse", "กำลังขนส่งมาไทย": "status-transit", "สินค้าถึงไทย": "status-thailand", "ออกจัดส่ง": "status-dispatch" }[status] || "status-special"; }
+function orderCard(order, index) {
   const items = Array.isArray(order.items) ? order.items : [];
-  const totalQty = items.reduce((sum, item) => sum + (Number(item.qty) || 1), 0);
-  const summaryStatus = getOrderSummaryStatus(items);
-
-  return `
-    <article class="order-card ${index === 0 ? "latest-order" : ""}">
-      <div class="order-top">
-        <div class="order-main">
-          <div class="order-title-row">
-            <div class="order-title">
-              คำสั่งซื้อ #${escapeHtml(order.orderId || "-")}
-            </div>
-            ${index === 0 ? '<span class="latest-badge">ออเดอร์ล่าสุด</span>' : ""}
-          </div>
-
-          <div class="order-meta">
-            ${items.length} รายการ · รวม ${totalQty} ชิ้น
-          </div>
-        </div>
-
-        <div class="update-box">
-          <div class="update-label">อัปเดตล่าสุด</div>
-          <div class="update-date">${escapeHtml(order.updateDate || "-")}</div>
-        </div>
-      </div>
-
-      <div class="order-overview">
-        <div class="overview-box">
-          <div class="overview-label">สถานะรวม</div>
-          <div class="overview-value">${escapeHtml(summaryStatus)}</div>
-        </div>
-
-        <div class="overview-box">
-          <div class="overview-label">การชำระเงิน</div>
-          <div class="overview-value">${escapeHtml(getPaymentText(order.payment))}</div>
-        </div>
-      </div>
-
-      ${createItemsList(items)}
-
-      ${
-        order.remark
-          ? `
-            <div class="order-overview">
-              <div class="overview-box" style="grid-column: 1 / -1;">
-                <div class="overview-label">หมายเหตุ</div>
-                <div class="overview-value">${escapeHtml(order.remark)}</div>
-              </div>
-            </div>
-          `
-          : ""
-      }
-
-      <div class="order-actions">
-        <a
-          class="line-contact-button"
-          href="${getLineUrl(order.orderId)}"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          สอบถามเกี่ยวกับออเดอร์นี้
-        </a>
-      </div>
-    </article>
-  `;
+  return `<article class="order-card"><div class="order-top"><div><div class="order-title">คำสั่งซื้อ #${escapeHtml(order.orderId || "-")} ${index === 0 ? '<span class="latest-badge">ล่าสุด</span>' : ""}</div><div class="order-meta">${items.length} รายการ · อัปเดต ${escapeHtml(order.updateDate || "-")}</div></div><div class="update-box"><div class="update-label">การชำระเงิน</div><div class="update-date">${escapeHtml(order.payment || "-")}</div></div></div><div class="items-section"><div class="items-title">รายการสินค้า</div><div class="items-list">${items.map(item => { const status = item.effectiveStatus || "รอตรวจสอบ"; return `<div class="item-row"><div class="item-main-row"><span class="item-name">${escapeHtml(item.productName || "-")}</span><span class="item-qty">× ${Number(item.qty) || 1}</span></div><div class="item-sub-row"><span class="item-status ${statusClass(status)}">● ${escapeHtml(status)}</span>${hasTracking(item.effectiveTracking) ? `<span class="item-tracking">Tracking: ${escapeHtml(item.effectiveTracking)} <button class="copy-tracking" data-tracking="${escapeHtml(item.effectiveTracking)}" type="button">คัดลอก</button></span>` : ""}</div></div>`; }).join("")}</div></div><div class="order-actions"><a class="line-contact-button" href="${lineUrl(`สวัสดีค่ะ สอบถามออเดอร์ #${order.orderId || "-"}`)}" target="_blank" rel="noopener">สอบถามออเดอร์นี้ ↗</a></div></article>`;
 }
-
-function updateItemsToggle(button) {
-  const card = button.closest(".order-card");
-  const list = card?.querySelector(".items-list");
-  const text = button.querySelector(".items-toggle-text");
-  const arrow = button.querySelector(".items-toggle-arrow");
-
-  if (!list || !text || !arrow) {
-    return;
-  }
-
-  const total = Number(button.dataset.total || 0);
-  const isOpen = list.classList.contains("is-open");
-
-  if (isOpen) {
-    text.textContent = "ซ่อนรายการสินค้า";
-    arrow.textContent = "↑";
-    return;
-  }
-
-  const hidden = Math.max(total - getVisibleItemLimit(), 0);
-  text.textContent = `ดูสินค้าเพิ่มเติมอีก ${hidden} รายการ`;
-  arrow.textContent = "↓";
-}
-
-function refreshItemButtons() {
-  results.querySelectorAll(".items-toggle").forEach(updateItemsToggle);
-}
-
-function showToast(message) {
-  toast.textContent = message;
-  toast.classList.add("show");
-
-  clearTimeout(showToast.timer);
-
-  showToast.timer = setTimeout(() => {
-    toast.classList.remove("show");
-  }, 1800);
-}
-
-async function copyText(text) {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {
-    const textarea = document.createElement("textarea");
-    textarea.value = text;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand("copy");
-    textarea.remove();
-  }
-}
-
-function showLoading() {
-  results.innerHTML = `
-    <div class="loading-box">
-      <div class="loading-spinner"></div>
-      <div class="loading-text">กำลังค้นหาข้อมูล...</div>
-    </div>
-  `;
-}
-
-function showNotFound() {
-  results.innerHTML = `
-    <div class="not-found">
-      <div class="not-found-title">ไม่พบข้อมูล</div>
-      <div class="not-found-text">ไม่พบคำสั่งซื้อจากเบอร์โทรศัพท์นี้</div>
-    </div>
-  `;
-}
-
-function showError(error) {
-  console.error(error);
-
-  results.innerHTML = `
-    <div class="error-box">
-      <div class="error-title">เกิดข้อผิดพลาด</div>
-      <div class="error-text">ไม่สามารถเชื่อมต่อระบบได้</div>
-      <div class="error-detail">${escapeHtml(error.message || "Unknown error")}</div>
-    </div>
-  `;
-}
-
 async function searchOrder() {
-  const rawPhone = phoneInput.value.trim();
+  const input = document.getElementById("phoneNumber"); const results = document.getElementById("results"); const button = document.getElementById("searchButton"); const phone = normalizePhone(input.value);
+  if (phone.length < 9 || phone.length > 10) { showToast("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง"); input.focus(); return; }
+  if (!API_URL || API_URL.includes("วาง_URL")) { results.innerHTML = '<div class="error-box"><div class="error-title">ยังไม่ได้เชื่อมต่อระบบ</div><div class="error-text">กรุณาตั้งค่า API_URL ใน config.js ก่อนใช้งาน</div></div>'; return; }
+  button.disabled = true; button.textContent = "กำลังค้นหา..."; results.innerHTML = '<div class="loading-box">กำลังค้นหาข้อมูล...</div>';
+  try { const response = await fetch(`${API_URL}?action=search&phone=${encodeURIComponent(phone)}`, { cache: "no-store" }); const data = await response.json(); if (!Array.isArray(data)) throw new Error(data.message || "รูปแบบข้อมูลไม่ถูกต้อง"); results.innerHTML = data.length ? data.map(orderCard).join("") : '<div class="not-found"><div class="not-found-title">ไม่พบข้อมูล</div><div class="not-found-text">ไม่พบคำสั่งซื้อจากเบอร์โทรศัพท์นี้</div></div>'; } catch (error) { results.innerHTML = `<div class="error-box"><div class="error-title">เกิดข้อผิดพลาด</div><div class="error-text">${escapeHtml(error.message)}</div></div>`; } finally { button.disabled = false; button.textContent = "ค้นหา"; }
+}
 
-  if (!rawPhone) {
-    alert("กรุณากรอกเบอร์โทรศัพท์");
-    phoneInput.focus();
-    return;
-  }
+document.addEventListener("click", event => {
+  const add = event.target.closest("[data-add]"); if (add) { event.preventDefault(); addToCart(add.dataset.add); return; }
+  const increase = event.target.closest("[data-increase]"); if (increase) { const item = cart.find(entry => entry.id === increase.dataset.increase); if (item) item.qty += 1; saveCart(); renderCart(); return; }
+  const decrease = event.target.closest("[data-decrease]"); if (decrease) { const item = cart.find(entry => entry.id === decrease.dataset.decrease); if (item) item.qty -= 1; cart = cart.filter(entry => entry.qty > 0); saveCart(); renderCart(); return; }
+  const remove = event.target.closest("[data-remove]"); if (remove) { cart = cart.filter(item => item.id !== remove.dataset.remove); saveCart(); renderCart(); return; }
+  const copy = event.target.closest(".copy-tracking"); if (copy) navigator.clipboard?.writeText(copy.dataset.tracking).then(() => showToast("คัดลอก Tracking แล้ว ✓"));
+});
+["productSearch", "priceFilter", "sortProducts"].forEach(id => document.getElementById(id).addEventListener("input", renderShop));
+document.querySelectorAll(".status-tab").forEach(tab => tab.addEventListener("click", () => {
+  activeStatus = tab.dataset.status;
+  document.querySelectorAll(".status-tab").forEach(item => item.classList.toggle("active", item === tab));
+  renderShop();
+}));
+document.getElementById("searchButton").addEventListener("click", searchOrder);
+document.getElementById("phoneNumber").addEventListener("keydown", event => { if (event.key === "Enter") searchOrder(); });
+document.querySelector(".mobile-menu-button").addEventListener("click", () => document.querySelector(".main-nav").classList.toggle("open"));
+document.getElementById("lineContact").href = lineUrl("สวัสดีค่ะ สนใจสอบถามสินค้า meju whisper");
+window.addEventListener("hashchange", route);
+renderFeatured(); renderShop(); updateCartCount(); route();
 
-  const phone = normalizePhone(rawPhone);
-
-  if (phone.length < 9 || phone.length > 10) {
-    alert("กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง");
-    phoneInput.focus();
-    return;
-  }
-
-  if (!API_URL || API_URL.includes("วาง_URL")) {
-    showError(new Error("ยังไม่ได้ตั้งค่า API_URL ใน config.js"));
-    return;
-  }
-
-  showLoading();
-  searchButton.disabled = true;
-  searchButton.textContent = "กำลังค้นหา...";
-
+async function loadStoreProducts() {
+  if (!API_URL || API_URL.includes("วาง_URL")) return;
   try {
-    const requestUrl =
-      `${API_URL}?action=search&phone=${encodeURIComponent(phone)}`;
-
-    const response = await fetch(requestUrl, {
-      method: "GET",
-      cache: "no-store"
-    });
-
+    const response = await fetch(`${API_URL}?action=products`, { cache: "no-store" });
     const data = await response.json();
-
-    if (!Array.isArray(data)) {
-      throw new Error(data.message || "รูปแบบข้อมูลไม่ถูกต้อง");
+    if (Array.isArray(data)) {
+      products = data;
+      renderFeatured();
+      renderShop();
     }
-
-    if (!data.length) {
-      showNotFound();
-      return;
-    }
-
-    results.innerHTML = data.map(createOrderCard).join("");
-    refreshItemButtons();
   } catch (error) {
-    showError(error);
-  } finally {
-    searchButton.disabled = false;
-    searchButton.textContent = "ค้นหา";
+    console.warn("ใช้รายการสินค้าสำรอง เนื่องจากโหลดสินค้าจากระบบไม่ได้", error);
   }
 }
 
-searchButton.addEventListener("click", searchOrder);
-
-phoneInput.addEventListener("keydown", event => {
-  if (event.key === "Enter") {
-    searchOrder();
-  }
-});
-
-results.addEventListener("click", async event => {
-  const itemsButton = event.target.closest(".items-toggle");
-
-  if (itemsButton) {
-    const list = itemsButton.closest(".order-card")?.querySelector(".items-list");
-
-    if (list) {
-      list.classList.toggle("is-open");
-      updateItemsToggle(itemsButton);
-    }
-
-    return;
-  }
-
-  const copyButton = event.target.closest(".copy-tracking");
-
-  if (copyButton) {
-    await copyText(copyButton.dataset.tracking || "");
-    showToast("คัดลอก Tracking แล้ว ✓");
-  }
-});
-
-window.addEventListener("resize", refreshItemButtons);
+loadStoreProducts();

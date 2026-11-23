@@ -1,15 +1,15 @@
 :root {
-  --deep-blush: #530f0e;
-  --cashmere: #f3a0aa;
-  --rich-wood: #30150e;
-  --silk-beach: #f8e5d7;
+  --deep-blush: #48281c;
+  --cashmere: #f3c9d5;
+  --rich-wood: #48281c;
+  --silk-beach: #f5f1e6;
 
-  --surface: #fffbf8;
-  --surface-soft: #f9f0ea;
-  --text: #30150e;
-  --text-soft: rgba(48, 21, 14, 0.64);
-  --border: rgba(83, 15, 14, 0.12);
-  --shadow: 0 14px 38px rgba(48, 21, 14, 0.06);
+  --surface: #fffdf9;
+  --surface-soft: #f5f1e6;
+  --text: #48281c;
+  --text-soft: rgba(72, 40, 28, 0.64);
+  --border: rgba(72, 40, 28, 0.14);
+  --shadow: 0 14px 38px rgba(72, 40, 28, 0.08);
 }
 
 * {
@@ -23,8 +23,9 @@
 body {
   min-height: 100vh;
   margin: 0;
-  font-family: "Noto Sans Thai", sans-serif;
-  background: #fcf7f4;
+  font-family: "DM Sans", "Noto Sans Thai", sans-serif;
+  font-size: 14px;
+  background: #f5f1e6;
   color: var(--text);
 }
 
@@ -33,6 +34,7 @@ input,
 select,
 textarea {
   font: inherit;
+  line-height: 1.5;
 }
 
 button {
@@ -105,7 +107,7 @@ button {
   gap: 15px;
   padding: 14px max(16px, calc((100% - 1160px) / 2));
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 251, 248, 0.94);
+  background: rgba(245, 241, 230, 0.94);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -179,6 +181,20 @@ button {
   color: var(--deep-blush);
   font-size: 25px;
   font-weight: 700;
+}
+
+.product-admin-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.product-admin-info img {
+  width: 58px;
+  height: 68px;
+  border-radius: 8px;
+  object-fit: cover;
+  background: var(--surface-soft);
 }
 
 .admin-tabs {
@@ -309,7 +325,7 @@ button {
   margin-top: 7px;
   padding: 5px 8px;
   border-radius: 999px;
-  background: rgba(243, 160, 170, 0.2);
+  background: rgba(243, 201, 213, 0.5);
   color: var(--deep-blush);
   font-size: 9.5px;
   font-weight: 700;
@@ -385,7 +401,7 @@ button {
   display: grid;
   place-items: center;
   padding: 15px;
-  background: rgba(48, 21, 14, 0.35);
+  background: rgba(72, 40, 28, 0.35);
 }
 
 .modal-card {

@@ -3,56 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MEJU ORDER</title>
-
+  <meta name="description" content="meju whisper - curated fashion, pre-order and import service">
+  <title>meju whisper — curated pieces</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap"
-    rel="stylesheet"
-  >
-
-  <link rel="stylesheet" href="style.css?v=700">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=829">
 </head>
-
 <body>
-  <div class="container">
-    <header class="header">
-      <div class="logo">MEJU ORDER</div>
-      <p class="subtitle">Preorder & Import Service</p>
+  <header class="site-header">
+    <a class="brand" href="#home" data-route="home" aria-label="meju whisper home">
+      <span class="brand-mark">mw</span>
+      <span><strong>meju</strong> whisper<small>curated pieces for your everyday</small></span>
+    </a>
+    <button class="mobile-menu-button" type="button" aria-label="เปิดเมนู">☰</button>
+    <nav class="main-nav" aria-label="เมนูหลัก">
+      <a href="#home" data-route="home">Home</a>
+      <a href="#shop" data-route="shop">Shop</a>
+      <a href="#orders" data-route="orders">My Orders</a>
+      <a href="#faq" data-route="faq">FAQ / Contact</a>
+    </nav>
+    <a class="cart-button" href="#cart" data-route="cart">Cart <span id="cartCount">0</span></a>
+  </header>
 
-      <div class="search-box">
-        <input
-          id="phoneNumber"
-          type="tel"
-          inputmode="numeric"
-          autocomplete="tel"
-          placeholder="กรอกเบอร์โทรศัพท์"
-        >
-        <button id="searchButton" type="button">ค้นหา</button>
+  <main>
+    <section id="homePage" class="page-section active-page" data-page="home">
+      <div class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">MejuWhisper / 2026</p>
+          <h1>Hot Iem,<br><em>For you.</em></h1>
+          <p class="hero-text">Sent with love ♡</p>
+          <a class="button button-dark" href="#shop" data-route="shop">Ready to ship <span>↗</span></a>
+        </div>
+        <div class="hero-art">
+          <div class="hero-shape"></div>
+          <div class="hero-sticker">Your Oder<br>Our Love</div>
+          <img src="https://drive.google.com/thumbnail?id=1EkULK-M7Jh7RH7nWNBpsbweMYQD7ODQ1&sz=w1600" alt="meju">
+        </div>
       </div>
 
-      <p class="hint">กรอกเบอร์โทรศัพท์เพื่อเช็กสถานะสินค้า</p>
-    </header>
+      <div class="home-block">
+        <div class="section-heading"><div><p class="eyebrow">HANDPICKED FOR YOU</p><h2>ready to ship</h2></div><a href="#shop" data-route="shop" class="text-link">ดูทั้งหมด ↗</a></div>
+        <div id="featuredProducts" class="product-grid product-grid-four"></div>
+      </div>
 
-    <main>
-      <section id="results" class="results">
-        <div class="welcome-box">
-          <div class="welcome-title">เช็กสถานะคำสั่งซื้อ</div>
-          <div class="welcome-text">กรุณากรอกเบอร์โทรศัพท์ด้านบน</div>
-        </div>
-      </section>
-    </main>
-  </div>
+    </section>
 
-  <footer class="fixed-footer">
-    <div class="footer-logo">MEJU ORDER</div>
-    <div class="footer-subtitle">Preorder | line @703ocmqz</div>
-  </footer>
+    <section id="shopPage" class="page-section" data-page="shop">
+      <div class="page-intro"><p class="eyebrow">MejuWhisper</p><h1>Shop <em>all</em></h1><p>Ready to ship · Pre-order</p></div>
+      <div class="shop-toolbar">
+        <div class="status-tabs" role="tablist" aria-label="ประเภทสินค้า"><button class="status-tab active" type="button" data-status="all">ทั้งหมด</button><button class="status-tab" type="button" data-status="ready">พร้อมส่ง</button><button class="status-tab" type="button" data-status="preorder">Pre-order</button></div>
+        <div class="filter-controls"><label>ค้นหา <input id="productSearch" type="search" placeholder="ชื่อสินค้า..."></label><label>ราคา <select id="priceFilter"><option value="all">ทั้งหมด</option><option value="under1000">ต่ำกว่า ฿1,000</option><option value="1000to2000">฿1,000 - ฿2,000</option><option value="over2000">มากกว่า ฿2,000</option></select></label><label>เรียง <select id="sortProducts"><option value="featured">แนะนำ</option><option value="low">ราคาต่ำไปสูง</option><option value="high">ราคาสูงไปต่ำ</option></select></label></div>
+      </div>
+      <div id="shopProducts" class="product-grid product-grid-three"></div>
+    </section>
 
+    <section id="productPage" class="page-section" data-page="product">
+      <div id="productDetail"></div>
+    </section>
+
+    <section id="cartPage" class="page-section" data-page="cart">
+      <div class="page-intro"><p class="eyebrow">YOUR PICKS</p><h1>Your <em>cart</em></h1><p>ตรวจสอบรายการก่อนสั่งซื้อ</p></div>
+      <div class="cart-layout"><div id="cartItems" class="cart-items"></div><aside id="cartSummary" class="cart-summary"></aside></div>
+    </section>
+
+    <section id="ordersPage" class="page-section" data-page="orders">
+      <div class="page-intro"><p class="eyebrow">ORDER TRACKING</p><h1>My <em>orders</em></h1><p>กรอกเบอร์โทรศัพท์เพื่อตรวจสอบสถานะคำสั่งซื้อ</p></div>
+      <div class="order-search"><input id="phoneNumber" type="tel" inputmode="numeric" autocomplete="tel" placeholder="กรอกเบอร์โทรศัพท์"><button id="searchButton" class="button button-dark" type="button">ค้นหา</button></div>
+      <div id="results" class="results"><div class="welcome-box"><strong>Track your order</strong><span>We’ll help you keep track of your order.</span></div></div>
+    </section>
+
+    <section id="faqPage" class="page-section" data-page="faq">
+      <div class="page-intro"><p class="eyebrow">WE ARE HERE TO HELP</p><h1>FAQ & <em>contact</em></h1><p>คำถามที่พบบ่อยและช่องทางพูดคุยกับเรา</p></div>
+      <div class="faq-layout"><div class="faq-list">
+        <details open><summary>วิธีสั่งซื้อเป็นอย่างไร?</summary><p>เลือกสินค้าที่ชอบ กดเพิ่มลงตะกร้า จากนั้นกดสั่งซื้อและส่งรายละเอียดให้เราทาง LINE OA ทางร้านจะสรุปยอดและแจ้งขั้นตอนถัดไปให้ค่ะ</p></details>
+        <details><summary>ต้องชำระเงินอย่างไร?</summary><p>สินค้าพรีออเดอร์มัดจำ 50% สินค้าพร้อมส่งชำระเต็มจำนวน และสามารถผ่อนชำระตามระยะเวลาที่ร้านกำหนดได้ เราจะแจ้งยอดและรายละเอียดการชำระเงินหลังยืนยันออเดอร์</p></details>
+        <details><summary>พรีออเดอร์ใช้เวลานานแค่ไหน?</summary><p>โดยเฉลี่ย 7–14 วัน ขึ้นอยู่กับรอบสินค้าและการขนส่งจากจีน เราจะแจ้งความคืบหน้าในหน้า My Orders</p></details>
+        <details><summary>ยกเลิกหรือคืนเงินได้ไหม?</summary><p>ออเดอร์พรีออเดอร์ไม่สามารถยกเลิกหลังสั่งซื้อกับร้านค้าแล้ว กรณีสินค้ามีปัญหาโปรดติดต่อเราภายใน 7 วันหลังได้รับสินค้า</p></details>
+      </div><div class="contact-card"><span class="contact-icon">mw</span><h2>Chat with us</h2><p>Your order, Our love</p><a class="button button-dark" id="lineContact" href="#" target="_blank" rel="noopener">เปิด LINE OA ↗</a><small>LINE OA: @703ocmqz</small></div></div>
+    </section>
+  </main>
+
+  <footer class="site-footer"><div class="footer-brand">meju whisper</div><div>preorder · import · little joys</div><div>© 2026 meju whisper</div></footer>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
-  <script src="config.js?v=700"></script>
-  <script src="app.js?v=700"></script>
+  <script src="config.js?v=803"></script>
+  <script src="app.js?v=809"></script>
 </body>
 </html>

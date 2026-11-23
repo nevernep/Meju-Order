@@ -3,6 +3,7 @@ const ADMIN_SESSION_HOURS = 8;
 const ORDERS_SHEET = "Orders";
 const ITEMS_SHEET = "OrderItems";
 const BATCHES_SHEET = "Batches";
+const PRODUCTS_SHEET = "Products";
 
 const ORDERS_HEADERS = [
   "OrderID",
@@ -15,6 +16,7 @@ const ORDERS_HEADERS = [
 const ITEMS_HEADERS = [
   "OrderItemID",
   "OrderID",
+  "Phone",
   "ProductID",
   "ProductName",
   "Qty",
@@ -33,6 +35,21 @@ const BATCHES_HEADERS = [
   "UpdateDate"
 ];
 
+const PRODUCTS_HEADERS = [
+  "ProductID",
+  "ProductName",
+  "Brand",
+  "Category",
+  "Price",
+  "Status",
+  "Stock",
+  "ImageURL",
+  "Description",
+  "UpdateDate",
+  "Colors",
+  "Sizes"
+];
+
 /* ==================================================
    SETUP
    รัน setupMejuSystem() ครั้งเดียวก่อนใช้งาน
@@ -44,6 +61,7 @@ function setupMejuSystem() {
   ensureSheet_(spreadsheet, ORDERS_SHEET, ORDERS_HEADERS);
   ensureSheet_(spreadsheet, ITEMS_SHEET, ITEMS_HEADERS);
   ensureSheet_(spreadsheet, BATCHES_SHEET, BATCHES_HEADERS);
+  ensureSheet_(spreadsheet, PRODUCTS_SHEET, PRODUCTS_HEADERS);
 
   console.log("MEJU system ready");
 }
@@ -55,6 +73,10 @@ function setupMejuSystem() {
 function doGet(e) {
   try {
     const action = String(e?.parameter?.action || "search");
+
+    if (action === "products") {
+      return jsonResponse_(publicProducts_());
+    }
 
     if (action !== "search") {
       return jsonResponse_({
@@ -132,6 +154,14 @@ function doPost(e) {
       return jsonResponse_(deleteBatch_(body.batchId));
     }
 
+    if (action === "saveProduct") {
+      return jsonResponse_(saveProduct_(body.product || {}));
+    }
+
+    if (action === "deleteProduct") {
+      return jsonResponse_(deleteProduct_(body.productId));
+    }
+
     return jsonResponse_({
       ok: false,
       message: "Unknown action"
@@ -167,6 +197,25 @@ function publicSearch_(e) {
     });
 
   return jsonResponse_(matchingOrders);
+}
+
+function publicProducts_() {
+  const data = loadAllData_();
+  return data.products
+    .filter(product => String(product.Status).trim() === "พร้อมส่ง" && Number(product.Stock || 0) > 0)
+    .map(product => ({
+      id: product.ProductID,
+      name: product.ProductName,
+      brand: product.Brand,
+      category: product.Category,
+      price: Number(product.Price) || 0,
+      status: product.Status,
+      stock: Number(product.Stock) || 0,
+      image: product.ImageURL,
+      description: product.Description,
+      colors: product.Colors,
+      sizes: product.Sizes
+    }));
 }
 
 function buildPublicOrder_(order, data) {
@@ -305,10 +354,33 @@ function adminDashboard_() {
       return batch;
     });
 
+  const products = data.products
+    .map(product => ({
+      id: product.ProductID,
+      name: product.ProductName,
+      brand: product.Brand,
+      category: product.Category,
+      price: Number(product.Price) || 0,
+      status: product.Status,
+      stock: Number(product.Stock) || 0,
+      image: product.ImageURL,
+      description: product.Description,
+      colors: product.Colors,
+      sizes: product.Sizes,
+      updateDate: product._displayDate,
+      timestamp: product._timestamp || 0
+    }))
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .map(product => {
+      delete product.timestamp;
+      return product;
+    });
+
   return {
     ok: true,
     orders: orders,
     batches: batches,
+    products: products,
     stats: getStats_(orders, batches)
   };
 }
@@ -434,6 +506,7 @@ function saveOrder_(input) {
       return [
         generateOrderItemId_(),
         orderId,
+        phone,
         String(item.productId || "").trim() || generateProductId_(),
         String(item.productName || "").trim(),
         Math.max(1, Number(item.qty) || 1),
@@ -711,6 +784,53 @@ function deleteBatch_(batchId) {
   }
 }
 
+function saveProduct_(input) {
+  const productId = String(input.id || "").trim() || generateProductId_();
+  const name = String(input.name || "").trim();
+  if (!name) throw new Error("กรุณากรอกชื่อสินค้า");
+  const price = Number(input.price);
+  if (!Number.isFinite(price) || price < 0) throw new Error("กรุณากรอกราคาให้ถูกต้อง");
+  const stock = Math.max(0, Number(input.stock) || 0);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const data = loadAllData_();
+    upsertRow_(data.productSheet, PRODUCTS_HEADERS, "ProductID", productId, {
+      ProductID: productId,
+      ProductName: name,
+      Brand: String(input.brand || "").trim(),
+      Category: String(input.category || "อื่น ๆ").trim(),
+      Price: price,
+      Status: String(input.status || "พร้อมส่ง").trim(),
+      Stock: stock,
+      ImageURL: String(input.image || "").trim(),
+      Description: String(input.description || "").trim(),
+      UpdateDate: new Date(),
+      Colors: String(input.colors || "").trim(),
+      Sizes: String(input.sizes || "").trim()
+    });
+    return { ok: true, productId: productId };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteProduct_(productId) {
+  const id = String(productId || "").trim();
+  if (!id) throw new Error("ไม่พบ Product ID");
+  const lock = LockService.getScriptLock();
+  lock.waitLock(30000);
+  try {
+    const data = loadAllData_();
+    if (!deleteRowsByField_(data.productSheet, PRODUCTS_HEADERS, "ProductID", id)) {
+      throw new Error("ไม่พบสินค้านี้");
+    }
+    return { ok: true };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 /* ==================================================
    COUNTS / STATS
 ================================================== */
@@ -813,6 +933,12 @@ function loadAllData_() {
     BATCHES_HEADERS
   );
 
+  const productSheet = getSheetChecked_(
+    spreadsheet,
+    PRODUCTS_SHEET,
+    PRODUCTS_HEADERS
+  );
+
   const timezone = spreadsheet.getSpreadsheetTimeZone();
 
   return {
@@ -821,9 +947,11 @@ function loadAllData_() {
     orderSheet: orderSheet,
     itemSheet: itemSheet,
     batchSheet: batchSheet,
+    productSheet: productSheet,
     orders: readObjects_(orderSheet, ORDERS_HEADERS, timezone),
     items: readObjects_(itemSheet, ITEMS_HEADERS, timezone),
-    batches: readObjects_(batchSheet, BATCHES_HEADERS, timezone)
+    batches: readObjects_(batchSheet, BATCHES_HEADERS, timezone),
+    products: readObjects_(productSheet, PRODUCTS_HEADERS, timezone)
   };
 }
 
@@ -917,6 +1045,15 @@ function ensureSheet_(spreadsheet, name, headers) {
     .getDisplayValues()[0]
     .map(value => String(value).trim());
 
+  if (name === PRODUCTS_SHEET && headers.slice(0, 10).every((header, index) => currentHeaders[index] === header)) {
+    const missingHeaders = headers.slice(currentHeaders.length);
+    if (missingHeaders.length) {
+      sheet.getRange(1, currentHeaders.length + 1, 1, missingHeaders.length)
+        .setValues([missingHeaders]);
+      return;
+    }
+  }
+
   const sameHeaders =
     currentHeaders.length === headers.length &&
     headers.every((header, index) => currentHeaders[index] === header);
@@ -942,9 +1079,22 @@ function getSheetChecked_(spreadsheet, name, headers) {
     .getDisplayValues()[0]
     .map(value => String(value).trim());
 
+  if (name === PRODUCTS_SHEET && headers.slice(0, 10).every((header, index) => currentHeaders[index] === header)) {
+    const missingHeaders = headers.slice(currentHeaders.length);
+    if (missingHeaders.length) {
+      sheet.getRange(1, currentHeaders.length + 1, 1, missingHeaders.length)
+        .setValues([missingHeaders]);
+    }
+  }
+
+  const refreshedHeaders = sheet
+    .getRange(1, 1, 1, sheet.getLastColumn())
+    .getDisplayValues()[0]
+    .map(value => String(value).trim());
+
   const sameHeaders =
-    currentHeaders.length === headers.length &&
-    headers.every((header, index) => currentHeaders[index] === header);
+    refreshedHeaders.length === headers.length &&
+    headers.every((header, index) => refreshedHeaders[index] === header);
 
   if (!sameHeaders) {
     throw new Error(
