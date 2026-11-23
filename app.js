@@ -124,9 +124,21 @@ function route() {
 function normalizePhone(value) { let phone = String(value || "").replace(/\D/g, ""); if (phone.length === 11 && phone.startsWith("66")) phone = "0" + phone.slice(2); if (phone.length === 9) phone = "0" + phone; return phone; }
 function hasTracking(value) { return value && !["-", "ไม่มี", "ยังไม่มี"].includes(String(value).trim()); }
 function statusClass(status) { return { "ยืนยันคำสั่งซื้อ": "status-confirmed", "ร้านค้าส่งแล้ว": "status-shipped", "ถึงโกดังจีน": "status-warehouse", "กำลังขนส่งมาไทย": "status-transit", "สินค้าถึงไทย": "status-thailand", "ออกจัดส่ง": "status-dispatch" }[status] || "status-special"; }
+function orderInquiryMessage(order) {
+  const items = Array.isArray(order.items) ? order.items : [];
+  const itemLines = items.map((item, index) => {
+    return `${index + 1}. ${item.productName || "-"}\nสถานะ: ${item.effectiveStatus || "รอตรวจสอบ"}`;
+  }).join("\n");
+
+  return [
+    `สวัสดีค่ะ สอบถามออเดอร์ #${order.orderId || "-"}`,
+    `รายการสินค้า:\n${itemLines || "-"}`,
+    `อัปเดตล่าสุด: ${order.updateDate || "-"}`
+  ].filter(Boolean).join("\n\n");
+}
 function orderCard(order, index) {
   const items = Array.isArray(order.items) ? order.items : [];
-  return `<article class="order-card"><div class="order-top"><div><div class="order-title">คำสั่งซื้อ #${escapeHtml(order.orderId || "-")} ${index === 0 ? '<span class="latest-badge">ล่าสุด</span>' : ""}</div><div class="order-meta">${items.length} รายการ · อัปเดต ${escapeHtml(order.updateDate || "-")}</div></div><div class="update-box"><div class="update-label">การชำระเงิน</div><div class="update-date">${escapeHtml(order.payment || "-")}</div></div></div><div class="items-section"><div class="items-title">รายการสินค้า</div><div class="items-list">${items.map(item => { const status = item.effectiveStatus || "รอตรวจสอบ"; return `<div class="item-row"><div class="item-main-row"><span class="item-name">${escapeHtml(item.productName || "-")}</span><span class="item-qty">× ${Number(item.qty) || 1}</span></div><div class="item-sub-row"><span class="item-status ${statusClass(status)}">● ${escapeHtml(status)}</span>${hasTracking(item.effectiveTracking) ? `<span class="item-tracking">Tracking: ${escapeHtml(item.effectiveTracking)} <button class="copy-tracking" data-tracking="${escapeHtml(item.effectiveTracking)}" type="button">คัดลอก</button></span>` : ""}</div></div>`; }).join("")}</div></div><div class="order-actions"><a class="line-contact-button" href="${lineUrl(`สวัสดีค่ะ สอบถามออเดอร์ #${order.orderId || "-"}`)}" target="_blank" rel="noopener">สอบถามออเดอร์นี้ ↗</a></div></article>`;
+  return `<article class="order-card"><div class="order-top"><div><div class="order-title">คำสั่งซื้อ #${escapeHtml(order.orderId || "-")} ${index === 0 ? '<span class="latest-badge">ล่าสุด</span>' : ""}</div><div class="order-meta">${items.length} รายการ · อัปเดต ${escapeHtml(order.updateDate || "-")}</div></div><div class="update-box"><div class="update-label">การชำระเงิน</div><div class="update-date">${escapeHtml(order.payment || "-")}</div></div></div><div class="items-section"><div class="items-title">รายการสินค้า</div><div class="items-list">${items.map(item => { const status = item.effectiveStatus || "รอตรวจสอบ"; return `<div class="item-row"><div class="item-main-row"><span class="item-name">${escapeHtml(item.productName || "-")}</span><span class="item-qty">× ${Number(item.qty) || 1}</span></div><div class="item-sub-row"><span class="item-status ${statusClass(status)}">● ${escapeHtml(status)}</span>${hasTracking(item.effectiveTracking) ? `<span class="item-tracking">Tracking: ${escapeHtml(item.effectiveTracking)} <button class="copy-tracking" data-tracking="${escapeHtml(item.effectiveTracking)}" type="button">คัดลอก</button></span>` : ""}</div></div>`; }).join("")}</div></div><div class="order-actions"><a class="line-contact-button" href="${lineUrl(orderInquiryMessage(order))}" target="_blank" rel="noopener">สอบถามออเดอร์นี้ ↗</a></div></article>`;
 }
 async function searchOrder() {
   const input = document.getElementById("phoneNumber"); const results = document.getElementById("results"); const button = document.getElementById("searchButton"); const phone = normalizePhone(input.value);
